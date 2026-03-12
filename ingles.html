@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Quiz Inglés ECOEMS</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+font-family:Arial;
+background:#f2f4f8;
+margin:0;
+padding:20px;
+}
+
+.quiz{
+max-width:900px;
+margin:auto;
+background:white;
+padding:30px;
+border-radius:12px;
+box-shadow:0 0 15px rgba(0,0,0,0.2);
+}
+
+h1{
+text-align:center;
+color:#2a5298;
+}
+
+#timer{
+text-align:center;
+font-size:1.6em;
+margin-bottom:20px;
+color:#e74c3c;
+font-weight:bold;
+}
+
+.question{
+margin:20px 0;
+padding:15px;
+border-bottom:1px solid #ddd;
+}
+
+label{
+cursor:pointer;
+}
+
+button{
+padding:12px 25px;
+margin-top:20px;
+background:#2a5298;
+color:white;
+border:none;
+border-radius:6px;
+cursor:pointer;
+font-size:16px;
+}
+
+button:hover{
+background:#1e3c72;
+}
+
+.correct{
+color:green;
+font-weight:bold;
+}
+
+.wrong{
+color:red;
+font-weight:bold;
+}
+
+#result{
+margin-top:20px;
+font-weight:bold;
+font-size:1.3em;
+text-align:center;
+}
+
+canvas{
+margin-top:30px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="quiz">
+
+<h1>Quiz de Inglés - ECOEMS</h1>
+
+<div id="timer">Tiempo restante: 23:00</div>
+
+<div id="questions"></div>
+
+<button onclick="checkAnswers()">Enviar examen</button>
+
+<p id="result"></p>
+
+<div id="feedback"></div>
+
+<canvas id="chart"></canvas>
+
+</div>
+
+<script>
+
+const questions=[
+
+{text:"Choose the correct sentence in present perfect:",options:["She did finished her homework.","She has finished her homework.","She finish her homework."],correct:1,category:"grammar",explanation:"Present perfect: has/have + past participle."},
+
+{text:"Select the correct conditional sentence:",options:["If I will study, I pass the exam.","If I study, I will pass the exam.","If I studied, I will pass the exam."],correct:1,category:"grammar",explanation:"First conditional: If + present, will + verb."},
+
+{text:"Which word is closest in meaning to 'rapid'?",options:["slow","fast","weak"],correct:1,category:"vocab",explanation:"Rapid significa rápido."},
+
+{text:"Choose the correct passive voice:",options:["The cake was eaten by Tom.","Tom ate the cake by.","The cake eaten Tom."],correct:0,category:"grammar",explanation:"Estructura pasiva: object + was/were + past participle."},
+
+{text:"I have known her ___ many years.",options:["since","for","during"],correct:1,category:"time",explanation:"'For' se usa para duración."},
+
+{text:"Choose the correct phrasal verb meaning 'cancel':",options:["call off","bring up","look after"],correct:0,category:"vocab",explanation:"'Call off' significa cancelar."},
+
+{text:"Reading: 'Although he was tired, he finished the race.' What does it mean?",options:["He finished because he was tired.","He finished despite being tired.","He did not finish the race."],correct:1,category:"reading",explanation:"Although = despite / aunque."},
+
+{text:"Which sentence is grammatically correct?",options:["She don't like coffee.","She doesn't likes coffee.","She doesn't like coffee."],correct:2,category:"grammar",explanation:"Doesn't + base verb."},
+
+{text:"Antonym of 'increase'?",options:["expand","reduce","grow"],correct:1,category:"vocab",explanation:"Reduce es el opuesto."},
+
+{text:"Choose the correct modal:",options:["You must to study.","You must study.","You must studying."],correct:1,category:"grammar",explanation:"Después de 'must' va verbo base."},
+
+{text:"If she ___ earlier, she would have caught the bus.",options:["left","had left","leaves"],correct:1,category:"grammar",explanation:"Third conditional: if + had + participle."},
+
+{text:"Reading: 'The project was delayed due to technical issues.' Meaning?",options:["The project was canceled.","The project was late because of problems.","The project finished early."],correct:1,category:"reading",explanation:"Delayed due to = retrasado por."},
+
+{text:"Synonym of 'difficult'?",options:["challenging","easy","weak"],correct:0,category:"vocab",explanation:"Challenging es sinónimo."},
+
+{text:"Choose the correct preposition: 'She is afraid ___ spiders.'",options:["of","in","at"],correct:0,category:"grammar",explanation:"Expresión correcta: afraid of."},
+
+{text:"Choose the correct sentence:",options:["He has been working here since 2018.","He has working here since 2018.","He working here since 2018."],correct:0,category:"grammar",explanation:"Present perfect continuous."},
+
+{text:"Reading: 'Unless you hurry, you will miss the train.'",options:["If you hurry you miss it.","If you do not hurry you will miss it.","You already missed it."],correct:1,category:"reading",explanation:"Unless = if not."},
+
+{text:"Antonym of 'generous'?",options:["selfish","kind","helpful"],correct:0,category:"vocab",explanation:"Selfish es el opuesto."},
+
+{text:"Choose correct comparative:",options:["more better","better","most better"],correct:1,category:"grammar",explanation:"Comparativo correcto: better."},
+
+{text:"He has lived in Mexico ___ 2015.",options:["since","for","during"],correct:0,category:"time",explanation:"Since indica inicio."},
+
+{text:"Reading: 'The scientist conducted an experiment.' Meaning?",options:["He performed a test.","He canceled a study.","He destroyed equipment."],correct:0,category:"reading",explanation:"Conduct = realizar."}
+
+];
+
+function shuffle(array){
+for(let i=array.length-1;i>0;i--){
+const j=Math.floor(Math.random()*(i+1));
+[array[i],array[j]]=[array[j],array[i]];
+}
+}
+
+window.onload=function(){
+
+shuffle(questions)
+
+const container=document.getElementById("questions")
+
+questions.forEach((q,index)=>{
+
+let html=`<div class="question"><p><b>${index+1}. ${q.text}</b></p>`
+
+q.options.forEach((opt,i)=>{
+
+html+=`<label>
+<input type="radio" name="q${index}" value="${i}">
+${opt}
+</label><br>`
+
+})
+
+html+=`</div>`
+
+container.insertAdjacentHTML("beforeend",html)
+
+})
+
+startTimer(23*60)
+
+}
+
+function checkAnswers(){
+
+let score=0
+let errors={grammar:0,vocab:0,time:0,reading:0}
+let feedback=""
+
+questions.forEach((q,index)=>{
+
+const radios=document.querySelectorAll(`input[name="q${index}"]`)
+radios.forEach(r=>r.disabled=true) // 🔒 bloquea respuestas
+
+const answer=document.querySelector(`input[name="q${index}"]:checked`)
+
+if(answer && parseInt(answer.value)===q.correct){
+
+score++
+feedback+=`<p class="correct">Pregunta ${index+1} correcta ✔️</p>`
+
+}else{
+
+errors[q.category]++
+
+feedback+=`<p class="wrong">Pregunta ${index+1} incorrecta ❌<br>
+Respuesta correcta: ${q.options[q.correct]}<br>
+Explicación: ${q.explanation}</p>`
+
+}
+
+})
+
+document.querySelector("button").disabled=true // 🔒 bloquea botón
+
+document.getElementById("result").innerText=`Tu puntaje: ${score}/${questions.length}`
+
+document.getElementById("feedback").innerHTML=feedback
+
+const ctx=document.getElementById("chart")
+
+new Chart(ctx,{
+type:"bar",
+data:{
+labels:["Gramática","Vocabulario","Tiempo","Lectura"],
+datasets:[{
+label:"Errores",
+data:[errors.grammar,errors.vocab,errors.time,errors.reading]
+}]
+},
+options:{responsive:true,scales:{y:{beginAtZero:true}}}
+})
+
+}
+
+function startTimer(duration){
+
+let timer=duration
+const display=document.getElementById("timer")
+
+const interval=setInterval(function(){
+
+let minutes=parseInt(timer/60)
+let seconds=parseInt(timer%60)
+
+if(minutes<10) minutes="0"+minutes
+if(seconds<10) seconds="0"+seconds
+
+display.textContent=`Tiempo restante: ${minutes}:${seconds}`
+
+if(--timer<0){
+
+clearInterval(interval)
+display.textContent="Tiempo terminado"
+checkAnswers()
+
+}
+
+},1000)
+
+}
+
+</script>
