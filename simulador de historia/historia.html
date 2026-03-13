@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador Historia ECOEMS</title>
+  <link rel="stylesheet" href="historia.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <main class="exam-wrapper">
+    <header class="exam-header">
+      <h1>Simulador de Historia ECOEMS</h1>
+      <p>Selecciona una respuesta por pregunta y envía tu examen al finalizar.</p>
+      <div class="status-row">
+        <span id="question-counter" class="badge">Preguntas: 0</span>
+        <span id="timer" class="badge badge-danger">Tiempo restante: 25:00</span>
+      </div>
+    </header>
+
+    <form id="exam-form" class="exam-form" novalidate>
+      <section id="questions" aria-live="polite"></section>
+      <button id="submit-btn" type="submit" class="submit-btn">Enviar examen</button>
+    </form>
+
+    <section id="results" class="results hidden" aria-live="polite">
+      <h2>Resultados</h2>
+      <p id="final-message" class="final-message"></p>
+      <ul class="stats-list">
+        <li><strong>Aciertos:</strong> <span id="correct-count">0</span></li>
+        <li><strong>Errores:</strong> <span id="wrong-count">0</span></li>
+        <li><strong>Porcentaje:</strong> <span id="percentage">0%</span></li>
+      </ul>
+      <canvas id="results-chart" width="400" height="220"></canvas>
+    </section>
+  </main>
+
+  <script src="historia.js"></script>
+</body>
+</html>
