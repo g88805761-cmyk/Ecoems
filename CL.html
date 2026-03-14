@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Examen ECOEMS | Comprensión lectora</title>
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --border: #dbe3ef;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(180deg, #eef4ff 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    .app {
+      width: min(1100px, 92vw);
+      margin: 2rem auto 3rem;
+    }
+
+    .app__header {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.2rem 1.4rem;
+      box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+      margin-bottom: 1rem;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.25rem, 2.4vw, 1.8rem);
+    }
+
+    .status-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      margin-top: 0.7rem;
+      font-weight: 600;
+      color: var(--muted);
+      gap: 0.5rem;
+    }
+
+    .quiz-container { display: grid; gap: 1rem; }
+
+    .question-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 1.2rem;
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.05);
+    }
+
+    .question-card h3 {
+      margin-top: 0;
+      margin-bottom: 0.7rem;
+      color: #111827;
+    }
+
+    .reading {
+      background: #f8fbff;
+      border: 1px dashed #bdd4ff;
+      border-radius: 10px;
+      padding: 0.8rem;
+      line-height: 1.45;
+      margin-bottom: 0.8rem;
+      color: #334155;
+    }
+
+    .question-text {
+      margin: 0 0 0.8rem;
+      font-weight: 600;
+    }
+
+    .options { display: grid; gap: 0.5rem; }
+
+    .option-label {
+      display: flex;
+      gap: 0.55rem;
+      align-items: flex-start;
+      padding: 0.6rem;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .option-label:hover {
+      border-color: #8cb3ff;
+      background: #f4f8ff;
+    }
+
+    .option-label input { margin-top: 0.22rem; }
+
+    .actions {
+      display: flex;
+      justify-content: center;
+      margin: 1.2rem 0;
+    }
+
+    .submit-btn {
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      border-radius: 10px;
+      padding: 0.85rem 1.4rem;
+      cursor: pointer;
+    }
+
+    .submit-btn:hover:not(:disabled) { background: var(--primary-dark); }
+
+    .submit-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .results {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 1.2rem;
+      margin-top: 0.8rem;
+    }
+
+    .results__stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.2rem;
+    }
+
+    .chart-wrapper {
+      width: min(340px, 100%);
+      margin-top: 0.6rem;
+    }
+
+    .hidden { display: none; }
+
+    .option-correct {
+      border-color: #86efac;
+      background: #f0fdf4;
+    }
+
+    .option-wrong {
+      border-color: #fca5a5;
+      background: #fef2f2;
+    }
+
+    @media (max-width: 680px) {
+      .app { width: 94vw; }
+      .question-card { padding: 0.9rem; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="app__header">
+      <h1>Examen interactivo de comprensión lectora (ECOEMS)</h1>
+      <div class="status-bar">
+        <p id="question-counter">Preguntas: 0 / 20</p>
+        <p id="timer" aria-live="polite">Tiempo restante: 25:00</p>
+      </div>
+    </header>
+
+    <section id="quiz-container" class="quiz-container" aria-live="polite"></section>
+
+    <div class="actions">
+      <button id="submit-btn" class="submit-btn" type="button">Enviar examen</button>
+    </div>
+
+    <section id="results" class="results hidden" aria-live="polite">
+      <h2>Resultados</h2>
+      <div class="results__stats">
+        <p><strong>Aciertos:</strong> <span id="correct-count">0</span></p>
+        <p><strong>Errores:</strong> <span id="wrong-count">0</span></p>
+        <p><strong>Porcentaje:</strong> <span id="percentage">0%</span></p>
+      </div>
+      <div class="chart-wrapper">
+        <canvas id="results-chart"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const EXAM_TIME_SECONDS = 25 * 60;
+
+    const questions = [
+      { text: "En la biblioteca del barrio, Julia encontró un libro de astronomía. Leyó sobre constelaciones y anotó tres datos en su cuaderno. Luego comparó esa información con una enciclopedia digital para confirmar fechas.", question: "¿Cuál fue la intención principal de Julia al consultar dos fuentes?", options: ["Evitar leer el libro completo", "Confirmar la exactitud de la información", "Aprender a usar la enciclopedia digital", "Memorizar todas las constelaciones"], answer: 1 },
+      { text: "El director de la escuela propuso separar residuos en cada salón. Al inicio, pocos alumnos participaron, pero después de una campaña informativa, la mayoría comenzó a clasificar papel, plástico y orgánicos.", question: "¿Qué factor favoreció el cambio de conducta de los alumnos?", options: ["La obligación de pagar una multa", "La campaña de información", "El cierre temporal de salones", "La eliminación de botes de basura"], answer: 1 },
+      { text: "Durante la sequía, los agricultores de la comunidad instalaron sistemas de riego por goteo. Aunque la inversión inicial fue alta, lograron reducir el consumo de agua y mantener la cosecha.", question: "¿Qué idea resume mejor el texto?", options: ["La sequía terminó sin afectar la producción", "El riego por goteo fue útil pese a su costo inicial", "Los agricultores abandonaron sus tierras", "El gobierno prohibió usar agua en cultivos"], answer: 1 },
+      { text: "Marcos llega tarde con frecuencia al entrenamiento. Su entrenador le explicó que la puntualidad demuestra respeto por el equipo. Desde entonces, Marcos prepara su mochila una noche antes.", question: "¿Qué relación de causa y efecto aparece en el texto?", options: ["Marcos entrena menos y por eso llega temprano", "El entrenador faltó y Marcos cambió su rutina", "La explicación del entrenador motivó a Marcos a organizarse", "La mochila nueva causó retrasos constantes"], answer: 2 },
+      { text: "Un artículo señala que caminar 30 minutos diarios mejora la circulación y disminuye el estrés. También recomienda mantener una hidratación adecuada para potenciar esos beneficios.", question: "¿Cuál opción coincide con la recomendación del artículo?", options: ["Caminar solo los fines de semana sin agua", "Hidratarse y realizar actividad física diaria", "Evitar caminar para no cansarse", "Sustituir el ejercicio con bebidas energéticas"], answer: 1 },
+      { text: "En una reseña teatral, la autora elogió la iluminación y el vestuario, pero criticó que algunos diálogos fueran demasiado largos. Aun así, consideró la obra recomendable para jóvenes.", question: "¿Qué postura expresa la autora?", options: ["Totalmente negativa hacia la obra", "Mixta: reconoce aciertos y limitaciones", "Indiferente, sin emitir opinión", "Enfocada solo en el precio de boletos"], answer: 1 },
+      { text: "El cartel del museo indica: 'Entrada gratuita para estudiantes con credencial vigente, de martes a jueves'. Sofía fue el domingo sin credencial y debió pagar entrada general.", question: "¿Por qué Sofía no obtuvo acceso gratuito?", options: ["Porque no le gustan los museos", "Porque fue en día no indicado y sin credencial", "Porque era estudiante de otra escuela", "Porque llegó antes de la hora de apertura"], answer: 1 },
+      { text: "Al comparar dos noticias sobre el mismo evento, Diego notó que una incluía testimonios y datos oficiales, mientras la otra usaba opiniones sin citar fuentes.", question: "¿Qué conclusión es más razonable?", options: ["Ambas notas tienen la misma confiabilidad", "La nota con fuentes verificables es más sólida", "La nota sin fuentes siempre es más objetiva", "Ninguna noticia puede analizarse críticamente"], answer: 1 },
+      { text: "En el huerto escolar sembraron lechugas en septiembre. Al registrar su crecimiento semanal, observaron que las plantas con más luz crecieron más rápido.", question: "¿Qué variable influyó en el crecimiento según el texto?", options: ["El color de las macetas", "La cantidad de luz recibida", "La edad de los estudiantes", "El número de cuadernos"], answer: 1 },
+      { text: "Una campaña de lectura invita a intercambiar libros usados en buen estado. Su objetivo es ampliar el acceso a materiales de lectura sin generar más gasto.", question: "¿Qué propósito tiene la campaña?", options: ["Vender libros nuevos a bajo precio", "Promover lectura mediante intercambio", "Reducir el número de bibliotecas", "Obligar a leer un solo género"], answer: 1 },
+      { text: "El profesor pidió escribir un resumen de 150 palabras sobre un texto científico. Aclaró que un resumen debe conservar las ideas principales y eliminar ejemplos secundarios.", question: "Según la indicación, ¿qué debe incluir el resumen?", options: ["Solo opiniones personales", "Ideas principales del texto", "Todos los ejemplos y detalles", "Citas largas sin explicación"], answer: 1 },
+      { text: "En su columna, una periodista afirma que usar transporte público reduce tráfico y contaminación. Sin embargo, reconoce que para lograrlo se necesita mejorar rutas y horarios.", question: "¿Qué plantea el texto sobre el transporte público?", options: ["No aporta beneficios ambientales", "Tiene ventajas, pero requiere mejoras", "Debe reemplazarse por autos privados", "Solo funciona en ciudades pequeñas"], answer: 1 },
+      { text: "Ana revisó su recibo de luz y notó un aumento en el consumo. Descubrió que dejó conectados varios aparatos durante la noche. Decidió usar regletas con interruptor.", question: "¿Qué acción tomó Ana para resolver el problema?", options: ["Cambiar de compañía eléctrica", "Desconectar equipos con regletas", "Comprar más aparatos", "Usar luces todo el día"], answer: 1 },
+      { text: "El cuento narra que un viajero comparte su comida con desconocidos en el camino. Al final, recibe ayuda de esas mismas personas cuando su vehículo se avería.", question: "¿Qué enseñanza sugiere la historia?", options: ["La desconfianza evita problemas", "La solidaridad puede generar apoyo mutuo", "Viajar siempre termina mal", "Compartir comida es una pérdida"], answer: 1 },
+      { text: "Una infografía sobre sueño saludable recomienda dormir entre 8 y 10 horas en adolescentes. También aconseja evitar pantallas al menos 30 minutos antes de acostarse.", question: "¿Cuál conducta contradice la infografía?", options: ["Dormir 9 horas", "Apagar el celular antes de dormir", "Usar tablet justo antes de acostarse", "Mantener horario regular de sueño"], answer: 2 },
+      { text: "En la feria de ciencias, el equipo A presentó un prototipo funcional y explicó su metodología. El equipo B mostró ideas creativas, pero sin resultados de pruebas.", question: "¿Por qué el equipo A fue mejor evaluado?", options: ["Porque tenía más integrantes", "Porque combinó funcionamiento y evidencia", "Porque decoró mejor su stand", "Porque evitó responder preguntas"], answer: 1 },
+      { text: "El texto histórico menciona que una ciudad creció cerca de un río por facilitar comercio y transporte. Años después, la contaminación del agua se volvió un problema central.", question: "¿Qué cambio describe el texto?", options: ["Del beneficio económico a un reto ambiental", "De zona rural a desierto total", "De actividad comercial a aislamiento", "De río navegable a montaña"], answer: 0 },
+      { text: "Clara leyó dos poemas: uno usa lenguaje directo y otro muchas metáforas. Aunque ambos tratan la nostalgia, cada autor provoca emociones distintas.", question: "¿Qué aspecto compara Clara en los poemas?", options: ["Solo la extensión de los versos", "El estilo expresivo y su efecto", "La biografía completa de autores", "El tipo de papel del libro"], answer: 1 },
+      { text: "En un aviso escolar se lee: 'La inscripción al torneo cierra el viernes a las 14:00'. Pedro llegó a las 15:00 del mismo día y su solicitud fue rechazada.", question: "¿Qué información fue decisiva para rechazar a Pedro?", options: ["Su edad", "El horario límite de inscripción", "El deporte elegido", "La falta de uniforme"], answer: 1 },
+      { text: "Un ensayo argumenta que aprender un segundo idioma mejora oportunidades académicas. Para sostenerlo, cita estudios y casos de estudiantes con acceso a becas internacionales.", question: "¿Qué recurso usa el autor para respaldar su postura?", options: ["Rumores sin fuente", "Datos y ejemplos documentados", "Preguntas sin responder", "Solo opiniones de amigos"], answer: 1 }
+    ];
+
+    const quizContainer = document.getElementById('quiz-container');
+    const submitBtn = document.getElementById('submit-btn');
+    const questionCounter = document.getElementById('question-counter');
+    const timerElement = document.getElementById('timer');
+    const resultsSection = document.getElementById('results');
+    const correctCountElement = document.getElementById('correct-count');
+    const wrongCountElement = document.getElementById('wrong-count');
+    const percentageElement = document.getElementById('percentage');
+
+    let secondsLeft = EXAM_TIME_SECONDS;
+    let timerId;
+    let examSubmitted = false;
+    let chartInstance;
+
+    function shuffleArray(array) {
+      const copy = [...array];
+      for (let i = copy.length - 1; i > 0; i -= 1) {
+        const randomIndex = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[randomIndex]] = [copy[randomIndex], copy[i]];
+      }
+      return copy;
+    }
+
+    const shuffledQuestions = shuffleArray(questions);
+
+    function renderQuestions() {
+      questionCounter.textContent = `Preguntas: 0 / ${shuffledQuestions.length}`;
+      const fragment = document.createDocumentFragment();
+
+      shuffledQuestions.forEach((item, index) => {
+        const card = document.createElement('article');
+        card.className = 'question-card';
+
+        const title = document.createElement('h3');
+        title.textContent = `Pregunta ${index + 1}`;
+
+        const reading = document.createElement('p');
+        reading.className = 'reading';
+        reading.textContent = item.text;
+
+        const questionText = document.createElement('p');
+        questionText.className = 'question-text';
+        questionText.textContent = item.question;
+
+        const optionsWrapper = document.createElement('div');
+        optionsWrapper.className = 'options';
+
+        item.options.forEach((option, optionIndex) => {
+          const label = document.createElement('label');
+          label.className = 'option-label';
+
+          const radio = document.createElement('input');
+          radio.type = 'radio';
+          radio.name = `question-${index}`;
+          radio.value = String(optionIndex);
+          radio.addEventListener('change', updateCounter);
+
+          const span = document.createElement('span');
+          span.textContent = option;
+
+          label.append(radio, span);
+          optionsWrapper.appendChild(label);
+        });
+
+        card.append(title, reading, questionText, optionsWrapper);
+        fragment.appendChild(card);
+      });
+
+      quizContainer.appendChild(fragment);
+    }
+
+    function updateCounter() {
+      const answered = document.querySelectorAll('input[type="radio"]:checked').length;
+      questionCounter.textContent = `Preguntas: ${answered} / ${shuffledQuestions.length}`;
+    }
+
+    function formatTime(totalSeconds) {
+      const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+      const secs = (totalSeconds % 60).toString().padStart(2, '0');
+      return `${minutes}:${secs}`;
+    }
+
+    function startTimer() {
+      timerElement.textContent = `Tiempo restante: ${formatTime(secondsLeft)}`;
+      timerId = setInterval(() => {
+        secondsLeft -= 1;
+        timerElement.textContent = `Tiempo restante: ${formatTime(Math.max(secondsLeft, 0))}`;
+        if (secondsLeft <= 0) {
+          clearInterval(timerId);
+          submitExam(true);
+        }
+      }, 1000);
+    }
+
+    function lockAnswers() {
+      document.querySelectorAll('input[type="radio"]').forEach((input) => {
+        input.disabled = true;
+      });
+    }
+
+    function evaluateExam() {
+      let correct = 0;
+
+      shuffledQuestions.forEach((item, questionIndex) => {
+        const selected = document.querySelector(`input[name="question-${questionIndex}"]:checked`);
+        const labels = document.querySelectorAll(`input[name="question-${questionIndex}"]`);
+
+        labels.forEach((input) => {
+          const parent = input.parentElement;
+          const isCorrectOption = Number(input.value) === item.answer;
+          if (isCorrectOption) parent.classList.add('option-correct');
+        });
+
+        if (selected && Number(selected.value) === item.answer) {
+          correct += 1;
+        } else if (selected) {
+          selected.parentElement.classList.add('option-wrong');
+        }
+      });
+
+      return correct;
+    }
+
+    function renderChart(correct, wrong) {
+      const canvas = document.getElementById('results-chart');
+      if (chartInstance) chartInstance.destroy();
+
+      chartInstance = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          labels: ['Aciertos', 'Errores'],
+          datasets: [{
+            data: [correct, wrong],
+            backgroundColor: ['#16a34a', '#dc2626'],
+            borderColor: ['#0f7a35', '#b91c1c'],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'bottom' } }
+        }
+      });
+    }
+
+    function submitExam(fromTimer = false) {
+      if (examSubmitted) return;
+      examSubmitted = true;
+      clearInterval(timerId);
+
+      lockAnswers();
+      submitBtn.disabled = true;
+      submitBtn.textContent = fromTimer ? 'Tiempo finalizado' : 'Examen enviado';
+
+      const correct = evaluateExam();
+      const total = shuffledQuestions.length;
+      const wrong = total - correct;
+      const percentage = Math.round((correct / total) * 100);
+
+      correctCountElement.textContent = String(correct);
+      wrongCountElement.textContent = String(wrong);
+      percentageElement.textContent = `${percentage}%`;
+
+      resultsSection.classList.remove('hidden');
+      renderChart(correct, wrong);
+      resultsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    submitBtn.addEventListener('click', () => submitExam(false));
+    renderQuestions();
+    startTimer();
+  </script>
+</body>
+</html>
