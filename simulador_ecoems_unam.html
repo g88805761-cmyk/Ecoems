@@ -1,0 +1,1455 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador ECOEMS/UNAM</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --ok: #166534;
+      --bad: #991b1b;
+      --border: #dbe3ef;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 20px; }
+    .top { position: sticky; top: 0; background: #f4f6fb; padding-bottom: 12px; z-index: 5; }
+    h1 { margin: 0 0 8px; font-size: 26px; }
+    .sub { color: var(--muted); margin: 0 0 12px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .chip { background: var(--card); border: 1px solid var(--border); border-radius: 999px; padding: 8px 12px; font-weight: bold; }
+    #temporizador { color: #b91c1c; }
+    .pregunta { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin: 12px 0; }
+    .pregunta p { margin: 0 0 10px; font-weight: bold; line-height: 1.35; }
+    label { display: block; margin: 6px 0; padding: 6px 8px; border-radius: 6px; }
+    label:hover { background: #f8fafc; }
+    .acciones { margin: 18px 0; display: flex; gap: 10px; }
+    button { padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; }
+    #enviarBtn { background: var(--accent); color: #fff; font-weight: bold; }
+    #enviarBtn:disabled { opacity: .55; cursor: not-allowed; }
+    #resultado { margin-top: 14px; font-size: 18px; font-weight: bold; }
+    .retro { margin-top: 10px; padding: 10px; border-radius: 8px; font-size: 14px; }
+    .correcta { background: #ecfdf3; border: 1px solid #86efac; color: var(--ok); }
+    .incorrecta { background: #fef2f2; border: 1px solid #fca5a5; color: var(--bad); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <h1>Simulador de examen tipo ECOEMS/UNAM</h1>
+      <p class="sub">Preguntas en orden aleatorio | Tiempo límite: 3 horas</p>
+      <div class="toolbar">
+        <div class="chip" id="contadorPreguntas">Total de preguntas: 128</div>
+        <div class="chip">Tiempo restante: <span id="temporizador">03:00:00</span></div>
+      </div>
+    </div>
+
+    <form id="examen"></form>
+
+    <div class="acciones">
+      <button id="enviarBtn" type="button">Enviar examen</button>
+    </div>
+    <div id="resultado"></div>
+  </div>
+
+  <script>
+const preguntas = [
+  {
+    "pregunta": "Si f(x)=2x^2-3x+1, ¿cuál es el valor de f(3)?",
+    "opciones": [
+      "8",
+      "10",
+      "12",
+      "14"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "Resuelve el sistema: x+y=11, x-y=3.",
+    "opciones": [
+      "(x,y)=(7,4)",
+      "(x,y)=(4,7)",
+      "(x,y)=(8,3)",
+      "(x,y)=(6,5)"
+    ],
+    "correcta": 0
+  },
+  {
+    "pregunta": "¿Cuál es el valor de x en 5^(x)=125?",
+    "opciones": [
+      "2",
+      "3",
+      "4",
+      "5"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "El promedio de 6, 8, 10 y 16 es:",
+    "opciones": [
+      "9",
+      "10",
+      "11",
+      "12"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "Si un auto recorre 180 km en 3 horas, su velocidad media es:",
+    "opciones": [
+      "50 km/h",
+      "55 km/h",
+      "60 km/h",
+      "65 km/h"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "¿Cuál expresión es equivalente a (a^3)(a^-1)?",
+    "opciones": [
+      "a^4",
+      "a^2",
+      "a^-3",
+      "1"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "En un triángulo rectángulo con catetos 9 y 12, la hipotenusa mide:",
+    "opciones": [
+      "13",
+      "14",
+      "15",
+      "16"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "¿Cuánto aumenta una cantidad de $800 al aplicar 12% de incremento?",
+    "opciones": [
+      "$86",
+      "$94",
+      "$96",
+      "$112"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "Si 3x-2 > 10, entonces x es:",
+    "opciones": [
+      "x>3",
+      "x>4",
+      "x>5",
+      "x>6"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "Factoriza: x^2-9",
+    "opciones": [
+      "(x-9)(x+1)",
+      "(x-3)(x+3)",
+      "(x-1)(x-9)",
+      "(x+9)^2"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La pendiente de la recta que pasa por (1,2) y (5,10) es:",
+    "opciones": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "¿Cuál es la probabilidad de obtener número par al lanzar un dado justo?",
+    "opciones": [
+      "1/6",
+      "1/3",
+      "1/2",
+      "2/3"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "Si log10(1000)=n, entonces n vale:",
+    "opciones": [
+      "2",
+      "3",
+      "10",
+      "100"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "El área de un círculo de radio 4 es:",
+    "opciones": [
+      "8π",
+      "12π",
+      "16π",
+      "32π"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "Una razón equivalente a 3:5 es:",
+    "opciones": [
+      "6:8",
+      "9:15",
+      "12:25",
+      "15:9"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "Si 2/3 de un número es 24, el número es:",
+    "opciones": [
+      "30",
+      "32",
+      "36",
+      "40"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "En 'Los alumnos entregaron sus trabajos', el núcleo del predicado es:",
+    "opciones": [
+      "alumnos",
+      "entregaron",
+      "trabajos",
+      "sus"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "¿Cuál opción presenta una oración compuesta coordinada adversativa?",
+    "opciones": [
+      "Llegó temprano y estudió",
+      "No vino porque enfermó",
+      "Quería salir, pero llovía",
+      "Cuando llegó, cenó"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "El conector 'sin embargo' introduce una relación de:",
+    "opciones": [
+      "causa",
+      "consecuencia",
+      "oposición",
+      "explicación"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "¿Cuál palabra está escrita correctamente?",
+    "opciones": [
+      "Exepción",
+      "Excepción",
+      "Ecepcion",
+      "Excepsión"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "En un texto argumentativo, la tesis es:",
+    "opciones": [
+      "un dato estadístico",
+      "la postura central del autor",
+      "una cita textual",
+      "el título"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "¿Qué figura retórica aparece en 'Te lo he dicho mil veces'?",
+    "opciones": [
+      "Metáfora",
+      "Hipérbole",
+      "Símil",
+      "Paradoja"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La función referencial del lenguaje se centra en:",
+    "opciones": [
+      "el emisor",
+      "el receptor",
+      "el mensaje estético",
+      "el contexto"
+    ],
+    "correcta": 3
+  },
+  {
+    "pregunta": "En 'Ayer leí una novela interesante', 'interesante' es:",
+    "opciones": [
+      "sustantivo",
+      "adjetivo calificativo",
+      "adverbio",
+      "pronombre"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "¿Cuál opción emplea correctamente el punto y coma?",
+    "opciones": [
+      "Fuimos al museo; y después comimos.",
+      "Fuimos al museo; después, comimos.",
+      "Fuimos; al museo después comimos.",
+      "Fuimos al museo después; comimos."
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "El texto que explica cómo realizar un experimento corresponde al tipo:",
+    "opciones": [
+      "narrativo",
+      "instructivo",
+      "poético",
+      "publicitario"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "En 'Si hubieras estudiado, habrías aprobado', el modo verbal predominante es:",
+    "opciones": [
+      "indicativo",
+      "imperativo",
+      "subjuntivo",
+      "infinitivo"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "¿Cuál enunciado tiene concordancia correcta?",
+    "opciones": [
+      "La gente estaban contentas",
+      "Hubieron problemas serios",
+      "Los resultados fue publicados",
+      "La mayoría llegó temprano"
+    ],
+    "correcta": 3
+  },
+  {
+    "pregunta": "La intención principal de una reseña crítica es:",
+    "opciones": [
+      "relatar hechos históricos",
+      "valorar una obra con argumentos",
+      "vender un producto",
+      "escribir poesía"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "¿Cuál es un ejemplo de oración pasiva?",
+    "opciones": [
+      "El jurado entregó el premio",
+      "Entregaron el premio ayer",
+      "El premio fue entregado por el jurado",
+      "Se entregó tarde"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "La palabra 'aún' lleva tilde cuando significa:",
+    "opciones": [
+      "incluso",
+      "todavía",
+      "hasta",
+      "también"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "En 'Me preocupa que no asistas', la proposición subordinada es:",
+    "opciones": [
+      "Me preocupa",
+      "que no asistas",
+      "no asistas",
+      "me"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La molécula que transporta la información hereditaria en eucariontes es:",
+    "opciones": [
+      "ARNm",
+      "ATP",
+      "ADN",
+      "enzima"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "Durante la mitosis, la separación de cromátidas hermanas ocurre en:",
+    "opciones": [
+      "profase",
+      "metafase",
+      "anafase",
+      "telofase"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "Si una planta se coloca en oscuridad prolongada, disminuye principalmente:",
+    "opciones": [
+      "respiración",
+      "fotosíntesis",
+      "absorción radicular",
+      "transpiración"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "¿Qué estructura regula el intercambio de gases en las hojas?",
+    "opciones": [
+      "Xilema",
+      "Estomas",
+      "Floema",
+      "Cutícula"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "Un ejemplo de homeostasis es:",
+    "opciones": [
+      "mutación al azar",
+      "mantenimiento de la temperatura corporal",
+      "formación de gametos",
+      "crecimiento poblacional"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "En genética mendeliana, un individuo Aa es:",
+    "opciones": [
+      "homocigoto dominante",
+      "homocigoto recesivo",
+      "heterocigoto",
+      "haploide"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "La selección natural favorece a los organismos que:",
+    "opciones": [
+      "son más grandes",
+      "tienen rasgos ventajosos en su ambiente",
+      "viven menos",
+      "no presentan variación"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "¿Qué componente sanguíneo participa principalmente en la coagulación?",
+    "opciones": [
+      "Plaquetas",
+      "Eritrocitos",
+      "Plasma",
+      "Linfocitos"
+    ],
+    "correcta": 0
+  },
+  {
+    "pregunta": "La relación entre abeja y flor, donde ambas se benefician, es:",
+    "opciones": [
+      "parasitismo",
+      "competencia",
+      "mutualismo",
+      "comensalismo"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "El sistema endocrino se caracteriza por:",
+    "opciones": [
+      "transmitir impulsos eléctricos directos",
+      "liberar hormonas al torrente sanguíneo",
+      "producir anticuerpos",
+      "oxigenar sangre"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "En una cadena trófica, los productores son:",
+    "opciones": [
+      "hongos",
+      "animales herbívoros",
+      "organismos autótrofos",
+      "descomponedores"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "La principal función de las mitocondrias es:",
+    "opciones": [
+      "sintetizar proteínas",
+      "almacenar agua",
+      "producir ATP",
+      "digerir macromoléculas"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "La biodiversidad de un ecosistema suele disminuir por:",
+    "opciones": [
+      "reforestación",
+      "fragmentación del hábitat",
+      "uso de áreas protegidas",
+      "reciclaje"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "¿Qué tipo de inmunidad se obtiene por vacunación?",
+    "opciones": [
+      "innata natural",
+      "adquirida activa",
+      "adquirida pasiva",
+      "genética"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "El órgano donde ocurre la mayor absorción de nutrientes es:",
+    "opciones": [
+      "estómago",
+      "intestino delgado",
+      "colon",
+      "esófago"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "En la teoría celular, todos los seres vivos:",
+    "opciones": [
+      "tienen núcleo",
+      "están formados por una o más células",
+      "son pluricelulares",
+      "realizan fotosíntesis"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "¿Cuál es la configuración electrónica de valencia del oxígeno (Z=8)?",
+    "opciones": [
+      "2s2 2p2",
+      "2s2 2p4",
+      "3s2 3p4",
+      "2p6"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "Enlace predominante en NaCl:",
+    "opciones": [
+      "covalente no polar",
+      "covalente polar",
+      "iónico",
+      "metálico"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "Si una disolución tiene pH=2, se clasifica como:",
+    "opciones": [
+      "básica fuerte",
+      "neutra",
+      "ácida",
+      "anfótera"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "La ley de Avogadro establece que, a T y P constantes, el volumen es proporcional a:",
+    "opciones": [
+      "masa",
+      "moles",
+      "densidad",
+      "energía"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "En la reacción 2H2 + O2 → 2H2O, el oxidante es:",
+    "opciones": [
+      "H2",
+      "O2",
+      "H2O",
+      "ninguno"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "¿Cuál cambio corresponde a una reacción química?",
+    "opciones": [
+      "fusión del hielo",
+      "evaporación del alcohol",
+      "oxidación del hierro",
+      "disolución de azúcar"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "La masa molar aproximada del CO2 es:",
+    "opciones": [
+      "22 g/mol",
+      "32 g/mol",
+      "44 g/mol",
+      "48 g/mol"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "Un compuesto orgánico se caracteriza por contener principalmente:",
+    "opciones": [
+      "silicio",
+      "carbono",
+      "sodio",
+      "aluminio"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "Si aumenta la concentración de reactivos, la velocidad de reacción generalmente:",
+    "opciones": [
+      "disminuye",
+      "aumenta",
+      "no cambia nunca",
+      "se vuelve cero"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La partícula con carga +1 en el átomo es:",
+    "opciones": [
+      "electrón",
+      "neutrón",
+      "protón",
+      "anión"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "En una neutralización ácido-base se forman típicamente:",
+    "opciones": [
+      "sal y agua",
+      "metal y gas",
+      "solo agua",
+      "dos ácidos"
+    ],
+    "correcta": 0
+  },
+  {
+    "pregunta": "¿Cuál es una propiedad periódica que aumenta de izquierda a derecha en un periodo?",
+    "opciones": [
+      "radio atómico",
+      "electronegatividad",
+      "carácter metálico",
+      "volumen atómico"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "El número de oxidación del oxígeno en la mayoría de compuestos es:",
+    "opciones": [
+      "+2",
+      "+1",
+      "-1",
+      "-2"
+    ],
+    "correcta": 3
+  },
+  {
+    "pregunta": "Un mol contiene aproximadamente:",
+    "opciones": [
+      "6.02×10^20 partículas",
+      "6.02×10^23 partículas",
+      "3.01×10^23 partículas",
+      "1.00×10^23 partículas"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La destilación simple permite separar:",
+    "opciones": [
+      "sólidos insolubles",
+      "líquidos con distintos puntos de ebullición",
+      "mezclas homogéneas por magnetismo",
+      "gases por filtración"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "En el modelo cinético, al aumentar la temperatura de un gas, aumenta:",
+    "opciones": [
+      "la masa de cada molécula",
+      "la energía cinética promedio",
+      "el número de moles automáticamente",
+      "la carga eléctrica"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "Un móvil pasa de 10 m/s a 22 m/s en 4 s. Su aceleración es:",
+    "opciones": [
+      "2 m/s²",
+      "3 m/s²",
+      "4 m/s²",
+      "5 m/s²"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "Si F=24 N y m=6 kg, la aceleración es:",
+    "opciones": [
+      "2 m/s²",
+      "3 m/s²",
+      "4 m/s²",
+      "6 m/s²"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "El trabajo realizado por una fuerza de 50 N que desplaza 3 m en la misma dirección es:",
+    "opciones": [
+      "100 J",
+      "150 J",
+      "200 J",
+      "250 J"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "¿Qué magnitud permanece constante en un MRU?",
+    "opciones": [
+      "aceleración distinta de cero",
+      "velocidad",
+      "fuerza neta no nula",
+      "posición"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La unidad de carga eléctrica en el SI es:",
+    "opciones": [
+      "Volt",
+      "Coulomb",
+      "Ampere",
+      "Ohm"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "En un circuito, si V=12 V e I=3 A, la resistencia es:",
+    "opciones": [
+      "2 Ω",
+      "3 Ω",
+      "4 Ω",
+      "6 Ω"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "Cuando una onda pasa de un medio a otro y cambia su rapidez, ocurre:",
+    "opciones": [
+      "difracción",
+      "interferencia",
+      "refracción",
+      "polarización"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "La energía potencial gravitatoria cerca de la superficie terrestre es:",
+    "opciones": [
+      "Ep=mv",
+      "Ep=mgh",
+      "Ep=1/2mv²",
+      "Ep=F/t"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "Si la distancia al foco de una lente convergente es menor que f, la imagen es:",
+    "opciones": [
+      "real e invertida",
+      "virtual y derecha",
+      "real y derecha",
+      "nula"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La tercera ley de Newton implica que las fuerzas de acción y reacción:",
+    "opciones": [
+      "se cancelan en el mismo cuerpo",
+      "tienen igual magnitud y sentidos opuestos",
+      "siempre son de fricción",
+      "solo existen en reposo"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "Una potencia de 200 W significa:",
+    "opciones": [
+      "200 J por segundo",
+      "200 N por metro",
+      "200 C por segundo",
+      "200 m/s"
+    ],
+    "correcta": 0
+  },
+  {
+    "pregunta": "En caída libre ideal (sin aire), todos los cuerpos:",
+    "opciones": [
+      "caen con la misma aceleración",
+      "el más pesado cae más rápido",
+      "el más ligero cae más rápido",
+      "no aceleran"
+    ],
+    "correcta": 0
+  },
+  {
+    "pregunta": "La frecuencia de una onda se mide en:",
+    "opciones": [
+      "newton",
+      "hertz",
+      "joule",
+      "pascal"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "Si un objeto describe un círculo a rapidez constante, su aceleración es:",
+    "opciones": [
+      "cero",
+      "tangencial constante",
+      "centrípeta hacia el centro",
+      "aleatoria"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "En termodinámica, el calor fluye espontáneamente de:",
+    "opciones": [
+      "frío a caliente",
+      "mayor temperatura a menor temperatura",
+      "menor presión a mayor presión",
+      "sistema aislado al exterior"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "El momento lineal de un cuerpo se calcula con:",
+    "opciones": [
+      "p=mv",
+      "p=F/A",
+      "p=mg",
+      "p=W/t"
+    ],
+    "correcta": 0
+  },
+  {
+    "pregunta": "El principal objetivo político del Plan de San Luis (1910) fue:",
+    "opciones": [
+      "restaurar el virreinato",
+      "desconocer la reelección de Díaz",
+      "implantar monarquía",
+      "anexar territorios"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "Las Leyes de Reforma impulsaron, entre otros puntos:",
+    "opciones": [
+      "unión Iglesia-Estado",
+      "separación Iglesia-Estado",
+      "reelección indefinida",
+      "supresión del federalismo"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La Constitución de 1917 incorporó por primera vez en México:",
+    "opciones": [
+      "sufragio censitario",
+      "derechos sociales",
+      "monarquía constitucional",
+      "reelección presidencial"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La causa inmediata de la Primera Guerra Mundial fue:",
+    "opciones": [
+      "invasión de Polonia",
+      "asesinato del archiduque Francisco Fernando",
+      "crisis de los misiles",
+      "caída del Muro de Berlín"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "El periodo conocido como 'Milagro Mexicano' se asocia con:",
+    "opciones": [
+      "crecimiento económico sostenido a mitad del siglo XX",
+      "guerra civil permanente",
+      "caída de exportaciones petroleras en 1810",
+      "fin del PRI en 2000"
+    ],
+    "correcta": 0
+  },
+  {
+    "pregunta": "¿Qué buscaba principalmente el movimiento de Independencia de México en su inicio?",
+    "opciones": [
+      "mantener privilegios peninsulares",
+      "autonomía y ruptura del orden colonial",
+      "anexión a Francia",
+      "abolir la agricultura"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La Doctrina Monroe (1823) se resume como:",
+    "opciones": [
+      "América para los americanos",
+      "Europa para los europeos",
+      "Asia para Asia",
+      "África unificada"
+    ],
+    "correcta": 0
+  },
+  {
+    "pregunta": "Durante el cardenismo, una medida clave fue:",
+    "opciones": [
+      "privatización petrolera",
+      "expropiación petrolera",
+      "disolución de ejidos",
+      "reelección presidencial"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La Revolución Industrial inició primero en:",
+    "opciones": [
+      "Francia",
+      "Alemania",
+      "Inglaterra",
+      "España"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "La Guerra Fría se caracterizó por:",
+    "opciones": [
+      "enfrentamiento ideológico sin guerra directa entre superpotencias",
+      "alianza militar única mundial",
+      "ausencia de conflictos regionales",
+      "expansión del feudalismo"
+    ],
+    "correcta": 0
+  },
+  {
+    "pregunta": "El Tratado de Tordesillas (1494) tuvo como propósito:",
+    "opciones": [
+      "dividir áreas de expansión entre España y Portugal",
+      "independizar colonias inglesas",
+      "crear la ONU",
+      "abolir la esclavitud"
+    ],
+    "correcta": 0
+  },
+  {
+    "pregunta": "En México, la etapa de 'Maximato' se vinculó al predominio político de:",
+    "opciones": [
+      "Madero",
+      "Calles",
+      "Cárdenas",
+      "Huerta"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La caída de Constantinopla en 1453 suele considerarse un hito para el fin de:",
+    "opciones": [
+      "Edad Antigua",
+      "Edad Media",
+      "Edad Moderna",
+      "Edad Contemporánea"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "El Congreso de Viena (1815) buscó principalmente:",
+    "opciones": [
+      "expandir ideas liberales",
+      "restaurar el orden monárquico europeo",
+      "fundar la OTAN",
+      "abolir fronteras"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La principal demanda agraria del zapatismo se sintetiza en:",
+    "opciones": [
+      "Sufragio efectivo",
+      "Tierra y libertad",
+      "Orden y progreso",
+      "No intervención"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La creación de la ONU ocurrió tras:",
+    "opciones": [
+      "Primera Guerra Mundial",
+      "Segunda Guerra Mundial",
+      "Guerra de Crimea",
+      "Guerra Fría"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La latitud de un lugar se mide respecto a:",
+    "opciones": [
+      "meridiano de Greenwich",
+      "nivel del mar",
+      "Ecuador",
+      "Trópico de Cáncer"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "Un huso horario equivale aproximadamente a:",
+    "opciones": [
+      "10° de longitud",
+      "15° de longitud",
+      "20° de latitud",
+      "30° de latitud"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "El clima seco con escasas lluvias y alta evaporación corresponde a regiones:",
+    "opciones": [
+      "selváticas",
+      "desérticas",
+      "polares húmedas",
+      "templadas lluviosas"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La mayor parte del relieve mexicano pertenece a:",
+    "opciones": [
+      "llanuras costeras",
+      "mesetas y sierras",
+      "valles glaciares",
+      "archipiélagos"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La corriente de Humboldt influye principalmente en:",
+    "opciones": [
+      "costa occidental de Sudamérica",
+      "mar Caribe",
+      "golfo de México",
+      "océano Ártico"
+    ],
+    "correcta": 0
+  },
+  {
+    "pregunta": "En demografía, la transición demográfica avanzada se asocia con:",
+    "opciones": [
+      "alta natalidad y alta mortalidad",
+      "baja natalidad y baja mortalidad",
+      "alta mortalidad infantil",
+      "crecimiento explosivo permanente"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "El principal gas de efecto invernadero emitido por actividades humanas es:",
+    "opciones": [
+      "oxígeno",
+      "dióxido de carbono",
+      "argón",
+      "helio"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "Una cuenca endorreica se caracteriza porque:",
+    "opciones": [
+      "desemboca en el mar",
+      "no tiene salida al mar",
+      "solo contiene agua subterránea",
+      "está en zonas polares"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "El fenómeno El Niño se relaciona con:",
+    "opciones": [
+      "enfriamiento extremo del Atlántico norte",
+      "calentamiento anómalo del Pacífico ecuatorial",
+      "aumento de glaciares andinos",
+      "erupciones volcánicas"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La urbanización acelerada sin planeación puede provocar:",
+    "opciones": [
+      "mayor cobertura vegetal",
+      "déficit de servicios y movilidad",
+      "menor contaminación",
+      "disminución del suelo impermeable"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "El tipo de frontera que separa dos estados por líneas astronómicas es:",
+    "opciones": [
+      "natural",
+      "geométrica",
+      "histórica",
+      "cultural"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La disponibilidad de agua dulce en México se distribuye:",
+    "opciones": [
+      "de forma homogénea",
+      "con mayor concentración en el sur-sureste",
+      "solo en el norte",
+      "solo en costas"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La actividad económica del sector terciario incluye:",
+    "opciones": [
+      "minería",
+      "agricultura",
+      "servicios",
+      "pesca"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "Una pirámide poblacional de base estrecha y cima ancha indica:",
+    "opciones": [
+      "población joven en expansión",
+      "envejecimiento demográfico",
+      "alta fecundidad",
+      "fuerte migración infantil"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "El río Bravo funciona en gran parte como límite entre:",
+    "opciones": [
+      "México y Guatemala",
+      "México y Estados Unidos",
+      "México y Belice",
+      "Canadá y EUA"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La región con mayor biodiversidad terrestre del planeta es:",
+    "opciones": [
+      "taiga",
+      "tundra",
+      "selva tropical húmeda",
+      "estepa"
+    ],
+    "correcta": 2
+  },
+  {
+    "pregunta": "El principio de supremacía constitucional implica que:",
+    "opciones": [
+      "las leyes locales están por encima de la Constitución",
+      "ninguna norma puede contradecir la Constitución",
+      "solo el Ejecutivo interpreta la ley",
+      "los tratados no tienen validez"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La división de poderes busca principalmente:",
+    "opciones": [
+      "concentrar decisiones",
+      "evitar abusos y equilibrar funciones",
+      "eliminar al Poder Judicial",
+      "sustituir elecciones"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "Un derecho humano es universal porque:",
+    "opciones": [
+      "depende de nacionalidad",
+      "se reconoce a toda persona",
+      "solo aplica a mayores de edad",
+      "lo otorga cada empresa"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La rendición de cuentas en democracia significa:",
+    "opciones": [
+      "ocultar decisiones públicas",
+      "informar y justificar acciones de gobierno",
+      "cancelar auditorías",
+      "limitar acceso a datos"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "El voto libre y secreto garantiza principalmente:",
+    "opciones": [
+      "presión de grupos",
+      "autonomía de decisión ciudadana",
+      "control empresarial",
+      "reelección automática"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "Cuando una autoridad actúa fuera de la ley, se vulnera el principio de:",
+    "opciones": [
+      "legalidad",
+      "solidaridad",
+      "pluralidad",
+      "subsidiariedad"
+    ],
+    "correcta": 0
+  },
+  {
+    "pregunta": "La participación ciudadana NO electoral incluye:",
+    "opciones": [
+      "plebiscito y consulta",
+      "solo campañas partidistas",
+      "evitar deliberación pública",
+      "anular derechos civiles"
+    ],
+    "correcta": 0
+  },
+  {
+    "pregunta": "La igualdad sustantiva entre mujeres y hombres requiere:",
+    "opciones": [
+      "tratos idénticos en todo caso",
+      "medidas que eliminen brechas reales",
+      "eliminar licencias de maternidad",
+      "restringir educación"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La CNDH en México tiene como función principal:",
+    "opciones": [
+      "dictar sentencias penales",
+      "proteger y promover derechos humanos",
+      "organizar elecciones",
+      "recaudar impuestos"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La cultura de la legalidad se fortalece cuando la ciudadanía:",
+    "opciones": [
+      "normaliza la corrupción",
+      "cumple normas y denuncia irregularidades",
+      "evita participar",
+      "justifica sobornos"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "El interés superior de la niñez obliga al Estado a:",
+    "opciones": [
+      "priorizar gasto militar",
+      "proteger integralmente sus derechos",
+      "reducir educación pública",
+      "limitar salud preventiva"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La libertad de expresión tiene como límite legítimo:",
+    "opciones": [
+      "la crítica al gobierno",
+      "los derechos de terceros y la ley",
+      "cualquier opinión distinta",
+      "la pluralidad"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "Un conflicto comunitario se atiende mejor mediante:",
+    "opciones": [
+      "violencia directa",
+      "diálogo, mediación y acuerdos",
+      "desinformación",
+      "exclusión de minorías"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "La transparencia pública permite a la ciudadanía:",
+    "opciones": [
+      "acceder a información gubernamental",
+      "suprimir órganos autónomos",
+      "evitar auditorías",
+      "cancelar elecciones"
+    ],
+    "correcta": 0
+  },
+  {
+    "pregunta": "La no discriminación implica que:",
+    "opciones": [
+      "se puede excluir por origen étnico",
+      "todas las personas merecen trato digno e igualitario",
+      "solo algunos grupos tienen derechos",
+      "la ley favorece prejuicios"
+    ],
+    "correcta": 1
+  },
+  {
+    "pregunta": "En un Estado democrático, la soberanía reside fundamentalmente en:",
+    "opciones": [
+      "las fuerzas armadas",
+      "el pueblo",
+      "el poder económico",
+      "los partidos"
+    ],
+    "correcta": 1
+  }
+];
+
+    const examen = document.getElementById('examen');
+    const enviarBtn = document.getElementById('enviarBtn');
+    const resultado = document.getElementById('resultado');
+    const temporizadorEl = document.getElementById('temporizador');
+    const contadorPreguntas = document.getElementById('contadorPreguntas');
+
+    function mezclar(array) {
+      const copia = [...array];
+      for (let i = copia.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copia[i], copia[j]] = [copia[j], copia[i]];
+      }
+      return copia;
+    }
+
+    const preguntasAleatorias = mezclar(preguntas);
+    contadorPreguntas.textContent = `Total de preguntas: ${preguntasAleatorias.length}`;
+
+    preguntasAleatorias.forEach((item, i) => {
+      const contenedor = document.createElement('div');
+      contenedor.className = 'pregunta';
+      contenedor.dataset.index = i;
+
+      const titulo = document.createElement('p');
+      titulo.textContent = `${i + 1}. ${item.pregunta}`;
+      contenedor.appendChild(titulo);
+
+      item.opciones.forEach((opcion, j) => {
+        const etiqueta = document.createElement('label');
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = `pregunta-${i}`;
+        radio.value = j;
+        etiqueta.appendChild(radio);
+        etiqueta.appendChild(document.createTextNode(' ' + opcion));
+        contenedor.appendChild(etiqueta);
+      });
+
+      const retro = document.createElement('div');
+      retro.className = 'retro';
+      retro.style.display = 'none';
+      retro.id = `retro-${i}`;
+      contenedor.appendChild(retro);
+
+      examen.appendChild(contenedor);
+    });
+
+    let examenEnviado = false;
+    let tiempoRestante = 3 * 60 * 60; // 3 horas en segundos
+
+    function formatearTiempo(segundos) {
+      const h = String(Math.floor(segundos / 3600)).padStart(2, '0');
+      const m = String(Math.floor((segundos % 3600) / 60)).padStart(2, '0');
+      const s = String(segundos % 60).padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    function deshabilitarExamen() {
+      document.querySelectorAll('input[type="radio"]').forEach(inp => inp.disabled = true);
+      enviarBtn.disabled = true;
+    }
+
+    function enviarExamen(forzadoPorTiempo = false) {
+      if (examenEnviado) return;
+      examenEnviado = true;
+      clearInterval(intervaloTemporizador);
+
+      let aciertos = 0;
+
+      preguntasAleatorias.forEach((item, i) => {
+        const seleccionada = document.querySelector(`input[name="pregunta-${i}"]:checked`);
+        const retro = document.getElementById(`retro-${i}`);
+        const correctaTexto = item.opciones[item.correcta];
+
+        if (seleccionada && Number(seleccionada.value) === item.correcta) {
+          aciertos++;
+          retro.className = 'retro correcta';
+          retro.textContent = `✅ Correcta. Respuesta: ${correctaTexto}`;
+        } else {
+          retro.className = 'retro incorrecta';
+          if (seleccionada) {
+            const elegida = item.opciones[Number(seleccionada.value)];
+            retro.textContent = `❌ Incorrecta. Tu respuesta: ${elegida} | Correcta: ${correctaTexto}`;
+          } else {
+            retro.textContent = `❌ Sin respuesta. Correcta: ${correctaTexto}`;
+          }
+        }
+        retro.style.display = 'block';
+      });
+
+      const total = preguntasAleatorias.length;
+      const errores = total - aciertos;
+      const extra = forzadoPorTiempo ? ' (el tiempo se agotó)' : '';
+      resultado.textContent = `Resultado final${extra}: Aciertos: ${aciertos} | Errores: ${errores} | Total: ${total}`;
+
+      deshabilitarExamen();
+    }
+
+    temporizadorEl.textContent = formatearTiempo(tiempoRestante);
+    const intervaloTemporizador = setInterval(() => {
+      if (examenEnviado) return;
+      tiempoRestante--;
+      temporizadorEl.textContent = formatearTiempo(Math.max(0, tiempoRestante));
+      if (tiempoRestante <= 0) {
+        enviarExamen(true);
+      }
+    }, 1000);
+
+    enviarBtn.addEventListener('click', () => enviarExamen(false));
+  </script>
+</body>
+</html>
